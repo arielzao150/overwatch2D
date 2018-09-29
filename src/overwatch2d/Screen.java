@@ -7,13 +7,17 @@ package overwatch2d;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 
 /**
  * 2D character shooter based on Overwatch
@@ -114,12 +118,15 @@ public class Screen extends javax.swing.JFrame implements Runnable {
             case 'Q':
             case 'q':
                 // ativa Ultimate se disponivel
-                //if(player.ult_charge == 100)
-                    for(int i=0;i < getHeight();i += 15){
-                        Bullet tiro = new Bullet();
-                        player.Fire(tiro);
-                        tiro.coord_y = i;
-                        shots.add(tiro);
+                if(!player.isFiring && !player.isReloading)
+                    if(player.ult_charge == 100){
+                        for(int i=0;i < getHeight();i += 15){
+                            Bullet tiro = new Bullet();
+                            player.Fire(tiro);
+                            tiro.coord_y = i;
+                            shots.add(tiro);
+                        }
+                        player.ult_charge = 0;
                     }
                 break;
             case 'E':
@@ -160,11 +167,12 @@ public class Screen extends javax.swing.JFrame implements Runnable {
                    && !player.isReloading // não está carregando
                    && System.currentTimeMillis() - player.lastShot > player.fire_rate
                         ){
+                    player.isFiring = true;
                     Bullet tiro = new Bullet();
                     player.Fire(tiro);
                     shots.add(tiro);
-                    
                     player.ammo--;
+                    player.isFiring = false;
                 }
                 break;
             case 3:
@@ -308,6 +316,12 @@ public class Screen extends javax.swing.JFrame implements Runnable {
         player = new McCree("/img/Spray_McCree_Pixel.png");
         player.coord_x = 20;
         player.coord_y = 20;
+        BufferedImage bkg = null;
+        try {
+            bkg = ImageIO.read(getClass().getResourceAsStream("/img/bkg.jpg"));
+        } catch (IOException ex) {
+            Logger.getLogger(Screen.class.getName()).log(Level.SEVERE, null, ex);
+        }
         
         enemies = new ArrayList<Enemy>();
         shots = new ArrayList<Bullet>();
@@ -320,17 +334,31 @@ public class Screen extends javax.swing.JFrame implements Runnable {
             g = getBufferStrategy().getDrawGraphics();
             g.setColor(Color.GRAY);
             g.fillRect(0, 0, getWidth(), getHeight());
+            //g.drawImage(bkg, 0, 0, rootPane);
+            g.drawImage(bkg, 0, 0, getWidth(), getHeight(), rootPane);
             
             // draw GUI
             g.setColor(Color.BLACK);
-            g.drawString("Life: " + player.health, 10, 50);
-            g.drawString("Ammo: " + player.ammo, 10, 60);
-            g.drawString("Score: " + score, 10, 70);
+            int margin = 15;
+            int height = 40;
+            g.drawString("Life: " + player.health, margin, height+=10);
+            g.drawString("Ammo: " + player.ammo, margin, height+=10);
+            g.drawString("Ultimate: "+player.ult_charge+"%", margin, height+=10);
+            g.drawString("Score: " + score, margin, height+=10);
             if(player.isReloading)
                 g.drawString("Reloading", (int)player.coord_x+20, (int)player.coord_y);
             
             if(player.health <= 0){
-                // GAME OVER
+                g.setColor(Color.GRAY);
+                g.fillRect(0, 0, getWidth(), getHeight());
+                g.setColor(Color.BLACK);
+                g.drawString("YOU ARE DEAD", 100, 100);
+                
+                try {
+                    Thread.sleep(5000);
+                    run();
+                } catch (InterruptedException ex) {
+                }
             }
             
             // update player
@@ -341,8 +369,10 @@ public class Screen extends javax.swing.JFrame implements Runnable {
             for(int i = 0; i < enemies.size(); i ++){
                 Enemy enemy = enemies.get(i);
                 enemy.move(getWidth(), getHeight());
-                if(enemy.coord_x+50 < 0)
+                if(enemy.coord_x+50 < 0){
                     enemies.remove(enemy);
+                    player.health -= 10;
+                }
                 else
                     enemy.draw(g);
             }
@@ -353,9 +383,13 @@ public class Screen extends javax.swing.JFrame implements Runnable {
                 
                 if(shot.playerShot){
                     if(shot.isCollidingWithEnemy(enemies)){
-                    // COLIDE
-                    // ou tira vida do inimigo ou do player
-                    shot.Die(shots);
+                        // COLIDE
+                        // ou tira vida do inimigo ou do player
+                        shot.Die(shots);
+                        score += 10;
+                        player.ult_charge = player.ult_charge+15 < 100?
+                                player.ult_charge+15
+                                :100;
                     }
                     if(shot.coord_x > getWidth())
                         shot.Die(shots);
@@ -376,8 +410,12 @@ public class Screen extends javax.swing.JFrame implements Runnable {
             
             // spawn enemies
             long tempoAtual = System.currentTimeMillis();
-            if(tempoAtual - lastUltGain > 500)
-                player.ult_charge++;
+            if(tempoAtual - lastUltGain > 1000){
+                lastUltGain = tempoAtual;
+                player.ult_charge = player.ult_charge+1 < 100?
+                                player.ult_charge+1
+                                :100;
+            }
             if(tempoAtual - lastEnemySpawn > 2000){
                 lastEnemySpawn = tempoAtual;
                 Enemy novoInimigo = new Enemy("/img/Spray_Talon_Trooper.png");
