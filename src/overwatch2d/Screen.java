@@ -328,14 +328,12 @@ public class Screen extends javax.swing.JFrame implements Runnable {
         /*for(int i = 0; i < current_Level.enemy_count; i++){
             enemies.add(new Enemy());
         }*/
-        // draw background
-        
+        // draw backgrounds
         while(true){
             g = getBufferStrategy().getDrawGraphics();
             g.setColor(Color.GRAY);
             g.fillRect(0, 0, getWidth(), getHeight());
-            //g.drawImage(bkg, 0, 0, rootPane);
-            g.drawImage(bkg, 0, 0, getWidth(), getHeight(), rootPane);
+            //g.drawImage(bkg, 0, 0, getWidth(), getHeight(), rootPane);
             
             // draw GUI
             g.setColor(Color.BLACK);
