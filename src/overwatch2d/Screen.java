@@ -298,6 +298,7 @@ public class Screen extends javax.swing.JFrame implements Runnable {
     @Override
     public void run() {
         Random random = new Random();
+        int score = 0;
         Graphics g;
         long lastEnemySpawn = 0;
         long lastUltGain = 0;
@@ -324,6 +325,7 @@ public class Screen extends javax.swing.JFrame implements Runnable {
             g.setColor(Color.BLACK);
             g.drawString("Life: " + player.health, 10, 50);
             g.drawString("Ammo: " + player.ammo, 10, 60);
+            g.drawString("Score: " + score, 10, 70);
             if(player.isReloading)
                 g.drawString("Reloading", (int)player.coord_x+20, (int)player.coord_y);
             
